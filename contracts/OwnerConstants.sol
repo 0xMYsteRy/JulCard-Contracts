@@ -42,7 +42,7 @@ contract OwnerConstants {
   // staking contract address, which is used to receive 20% of monthly fee, so staked users can be rewarded from this contract
   address public stakeContractAddress;
   // statking amount of monthly fee
-  uint256 public stakePercent = 2000; // 20 %
+  uint256 public stakePercent = 15 * (100 + 15) ; // 15 %
 
   // withdraw fee and payment fee should not exeed this amount, 1% is coresponding to 100.
   uint256 public constant MAX_FEE_AMOUNT = 500; // 5%

@@ -112,7 +112,6 @@ contract JulCardV2 is OwnerConstants, SignerRole {
     address beforeSwapper
   );
   event MonthlyFeePaid(
-    uint256 id,
     address userAddr,
     uint256 userValidTime,
     uint256 usdAmount
@@ -322,7 +321,7 @@ contract JulCardV2 is OwnerConstants, SignerRole {
 
   // verified
   function getUserExpired(address _userAddr) public view returns (bool) {
-    if (userValidTimes[_userAddr] > block.timestamp) {
+    if (userValidTimes[_userAddr] + 25 days > block.timestamp) {
       return false;
     }
     return true;
@@ -544,64 +543,28 @@ contract JulCardV2 is OwnerConstants, SignerRole {
 
   // verified
   function payMonthlyFee(
-    uint256 id,
-    address market,
-    uint256 usdAmount,
-    uint256 validTime,
-    uint8 v,
-    bytes32 r,
-    bytes32 s
-  ) public nonReentrant {
-    address userAddr = msg.sender;
+    SignData calldata _data,
+    SignKeys calldata user_key,
+    address  market
+  ) public nonReentrant
+    marketEnabled(market)
+    noEmergency
+    validSignOfUser(_data, user_key)
+    onlySigner
+  {
+    address userAddr = _data.userAddr;
+    require(userValidTimes[userAddr] <= block.timestamp, "e");
+    require(monthlyFeeAmount <= _data.amount, "over paid");
 
-    require(
-      isSigner(
-        ecrecover(
-          toEthSignedMessageHash(
-            keccak256(
-              abi.encodePacked(
-                this,
-                PAY_MONTHLY_FEE,
-                id,
-                userAddr,
-                market,
-                usdAmount,
-                validTime
-              )
-            )
-          ),
-          v,
-          r,
-          s
-        )
-      ),
-      "ssst"
-    );
-    require(_paymentIds[id] == false, "pru");
-    _paymentIds[id] = true;
-    require(validTime > block.timestamp, "expired");
     // increase valid period
-    bool bExpired = getUserExpired(userAddr);
     uint256 _tempVal;
-    if (bExpired) {
-      _tempVal = block.timestamp;
-    } else {
-      _tempVal = userValidTimes[userAddr];
-    }
     // extend user's valid time
     uint256 _monthlyFee = getMonthlyFeeAmount(market == juld);
-    if (_monthlyFee == 0) {
-      userValidTimes[userAddr] = _tempVal + 30 days;
-    } else {
-      userValidTimes[userAddr] =
-        _tempVal +
-        (30 days * usdAmount) /
-        _monthlyFee;
-    }
+
+    userValidTimes[userAddr] = block.timestamp + 30 days;
     
-    _tempVal = usdAmount; // used for another variable to reduce local variable count
     if (stakeContractAddress != address(0)) {
-      _tempVal = (usdAmount * 10000) / (10000 + stakePercent);
+      _tempVal = (_monthlyFee * 10000) / (10000 + stakePercent);
     }
     uint256 beforeAmount = usersBalances[userAddr][market];
     calculateAmount(
@@ -618,7 +581,7 @@ contract JulCardV2 is OwnerConstants, SignerRole {
       usersBalances[userAddr][market],
       beforeAmount
     );
-    emit MonthlyFeePaid(id, userAddr, userValidTimes[userAddr], usdAmount);
+    emit MonthlyFeePaid(userAddr, userValidTimes[userAddr], _monthlyFee);
   }
 
   // verified
@@ -785,8 +748,8 @@ contract JulCardV2 is OwnerConstants, SignerRole {
       addFeeUsdAmount = usdAmount;
     }
     // change addFeeUsdAmount to USDT asset amounts
-    uint256 assetAmountIn = getAssetAmount(market, addFeeUsdAmount);
-    assetAmountIn = assetAmountIn + assetAmountIn / 10; //price tolerance = 10%
+    // uint256 assetAmountIn = getAssetAmount(market, addFeeUsdAmount);
+    // assetAmountIn = assetAmountIn + assetAmountIn / 10; //price tolerance = 10%
     uint256 usdtTotalAmount = convertUsdAmountToAssetAmount(
       addFeeUsdAmount,
       USDT
@@ -886,23 +849,23 @@ contract JulCardV2 is OwnerConstants, SignerRole {
     return usersBalances[userAddr][market];
   }
 
-  // verified
-  function getBatchUserAssetAmount(address userAddr)
-    public
-    view
-    returns (uint256[] memory, uint256[] memory)
-  {
-    uint256[] memory assets = new uint256[](allMarkets.length);
-    uint256[] memory decimals = new uint256[](allMarkets.length);
+  // // verified
+  // function getBatchUserAssetAmount(address userAddr)
+  //   public
+  //   view
+  //   returns (uint256[] memory, uint256[] memory)
+  // {
+  //   uint256[] memory assets = new uint256[](allMarkets.length);
+  //   uint256[] memory decimals = new uint256[](allMarkets.length);
 
-    for (uint256 i = 0; i < allMarkets.length; i++) {
-      assets[i] = usersBalances[userAddr][allMarkets[i]];
-      ERC20Interface token = ERC20Interface(allMarkets[i]);
-      uint256 tokenDecimal = uint256(token.decimals());
-      decimals[i] = tokenDecimal;
-    }
-    return (assets, decimals);
-  }
+  //   for (uint256 i = 0; i < allMarkets.length; i++) {
+  //     assets[i] = usersBalances[userAddr][allMarkets[i]];
+  //     ERC20Interface token = ERC20Interface(allMarkets[i]);
+  //     uint256 tokenDecimal = uint256(token.decimals());
+  //     decimals[i] = tokenDecimal;
+  //   }
+  //   return (assets, decimals);
+  // }
 
   function getUserBalanceInUsd(address userAddr) public view returns (uint256) {
     address market = getUserMainMarket(userAddr);
