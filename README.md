@@ -1,3 +1,11 @@
+# Smart Contract Audit
+
+All Contracts at least one internal audit and at least one external audit, which will be released to the public on GitHub after the Beta Testing! 
+
+# Whitepaper
+https://justliquidity.docdroid.com/Y0DBpyt
+
+
 # JulCard contracts
 compile 
 
