@@ -25,6 +25,8 @@ contract JulCardV2 is OwnerConstants, SignerRole {
   bytes4 public constant BUYGOODS = 0xa8fd19f2;
   //  bytes4 public constant SET_USER_MAIN_MARKET = bytes4(keccak256(bytes('setUserMainMarket')));
   bytes4 public constant SET_USER_MAIN_MARKET = 0x4a22142e;
+  
+  uint256 public constant CARD_VALIDATION_TIME = 10 minutes; // 30 days in prodcution
 
   using SafeMath for uint256;
 
@@ -154,13 +156,9 @@ contract JulCardV2 is OwnerConstants, SignerRole {
   ) SignerRole(_initialSigner) {
     // The totalSupply is assigned to transaction sender, which is the account
     // that is deploying the contract.
-    governorAddress = msg.sender; //initial governor address
     WETH = _WETH;
     juld = _juldAddress;
     USDT = _USDT;
-
-    _status = _NOT_ENTERED;
-    initialized = false;
   }
 
   // verified
@@ -170,6 +168,7 @@ contract JulCardV2 is OwnerConstants, SignerRole {
 
   // verified
   function initialize(
+    address _owner,
     address _priceOracle,
     address _financialAddress,
     address _masterAddress,
@@ -180,7 +179,8 @@ contract JulCardV2 is OwnerConstants, SignerRole {
     address _swapper
   ) public {
     require(!initialized, "already initalized");
-
+    owner = _owner;
+    _addSigner(_owner);
     priceOracle = _priceOracle;
     treasuryAddress = _treasuryAddress;
     financialAddress = _financialAddress;
@@ -193,6 +193,29 @@ contract JulCardV2 is OwnerConstants, SignerRole {
     levelValidationPeriod = 10 minutes; //for testing
     //private variables initialize.
     _status = _NOT_ENTERED;
+    //initialize OwnerConstants arrays
+    JulDStakeAmounts = [
+      1000 ether,
+      2500 ether,
+      10000 ether,
+      25000 ether,
+      100000 ether
+    ];
+    DailyLimits = [
+      100 ether,
+      250 ether,
+      500 ether,
+      2500 ether,
+      5000 ether,
+      10000 ether
+    ];
+    CashBackPercents = [10, 200, 300, 400, 500, 600];
+    stakePercent = 15 * (100 + 15);
+    buyFeePercent = 100;
+    withdrawFeePercent = 10;
+    monthlyFeeAmount = 6.99 ether;
+    juldMonthlyProfit = 1000;
+    
     initialized = true;
     addMarket(WETH);
     addMarket(USDT);
@@ -341,16 +364,16 @@ contract JulCardV2 is OwnerConstants, SignerRole {
 
   // verified
   function setPriceOracle(address _priceOracle) public onlyGovernor {
-    address beforeAddress = priceOracle;
+    // address beforeAddress = priceOracle;
     priceOracle = _priceOracle;
-    emit PriceOracleChanged(governorAddress, priceOracle, beforeAddress);
+    // emit PriceOracleChanged(governorAddress, priceOracle, beforeAddress);
   }
 
   // verified
-  function setSwapper(address _swapper) public onlyGovernor {
-    address beforeAddress = _swapper;
+  function setSwapper(address _swapper) public onlyOwner {
+    // address beforeAddress = _swapper;
     swapper = _swapper;
-    emit SwapperChanged(governorAddress, swapper, beforeAddress);
+    // emit SwapperChanged(governorAddress, swapper, beforeAddress);
   }
 
   // verified
@@ -363,14 +386,14 @@ contract JulCardV2 is OwnerConstants, SignerRole {
     _removeSigner(_signer);
   }
 
-  function setDefaultMarket(address market)
-    public
-    marketEnabled(market)
-    marketSupported(market)
-    onlyGovernor
-  {
-    defaultMarket = market;
-  }
+  // function setDefaultMarket(address market)
+  //   public
+  //   marketEnabled(market)
+  //   marketSupported(market)
+  //   onlyGovernor
+  // {
+  //   defaultMarket = market;
+  // }
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -422,7 +445,7 @@ contract JulCardV2 is OwnerConstants, SignerRole {
       ) {
         return newLevel;
       } else {
-        // do somrthing ...
+        // do something ...
       }
     }
     return usersLevel[userAddr];
@@ -561,7 +584,7 @@ contract JulCardV2 is OwnerConstants, SignerRole {
     // extend user's valid time
     uint256 _monthlyFee = getMonthlyFeeAmount(market == juld);
 
-    userValidTimes[userAddr] = block.timestamp + 30 days;
+    userValidTimes[userAddr] = block.timestamp + CARD_VALIDATION_TIME;
     
     if (stakeContractAddress != address(0)) {
       _tempVal = (_monthlyFee * 10000) / (10000 + stakePercent);
@@ -664,7 +687,6 @@ contract JulCardV2 is OwnerConstants, SignerRole {
   // decimal of usdAmount is 18
   function buyGoods(
     SignData calldata _data,
-    SignKeys calldata user_key,
     SignKeys calldata signer_key
   )
     external
@@ -673,7 +695,6 @@ contract JulCardV2 is OwnerConstants, SignerRole {
     noExpired(_data.userAddr)
     noEmergency
     validSignOfSigner(_data, signer_key)
-    validSignOfUser(_data, user_key)
   {
     require(_paymentIds[_data.id] == false, "pru");
     _paymentIds[_data.id] = true;
@@ -757,9 +778,7 @@ contract JulCardV2 is OwnerConstants, SignerRole {
     if (market != USDT) {
       // we need to change somehting here, because if there are not pair {market, USDT} , then we have to add another path
       // so please check the path is exist and if no, please add market, weth, usdt to path
-      address[] memory path = new address[](2);
-      path[0] = market;
-      path[1] = USDT;
+      address[] memory path = ISwapper(swapper).getOptimumPath(market, USDT);
       uint256[] memory amounts = ISwapper(swapper).getAmountsIn(
         usdtTotalAmount,
         path
@@ -849,23 +868,23 @@ contract JulCardV2 is OwnerConstants, SignerRole {
     return usersBalances[userAddr][market];
   }
 
-  // // verified
-  // function getBatchUserAssetAmount(address userAddr)
-  //   public
-  //   view
-  //   returns (uint256[] memory, uint256[] memory)
-  // {
-  //   uint256[] memory assets = new uint256[](allMarkets.length);
-  //   uint256[] memory decimals = new uint256[](allMarkets.length);
+  // verified
+  function getBatchUserAssetAmount(address userAddr)
+    public
+    view
+    returns (uint256[] memory, uint256[] memory)
+  {
+    uint256[] memory assets = new uint256[](allMarkets.length);
+    uint256[] memory decimals = new uint256[](allMarkets.length);
 
-  //   for (uint256 i = 0; i < allMarkets.length; i++) {
-  //     assets[i] = usersBalances[userAddr][allMarkets[i]];
-  //     ERC20Interface token = ERC20Interface(allMarkets[i]);
-  //     uint256 tokenDecimal = uint256(token.decimals());
-  //     decimals[i] = tokenDecimal;
-  //   }
-  //   return (assets, decimals);
-  // }
+    for (uint256 i = 0; i < allMarkets.length; i++) {
+      assets[i] = usersBalances[userAddr][allMarkets[i]];
+      ERC20Interface token = ERC20Interface(allMarkets[i]);
+      uint256 tokenDecimal = uint256(token.decimals());
+      decimals[i] = tokenDecimal;
+    }
+    return (assets, decimals);
+  }
 
   function getUserBalanceInUsd(address userAddr) public view returns (uint256) {
     address market = getUserMainMarket(userAddr);

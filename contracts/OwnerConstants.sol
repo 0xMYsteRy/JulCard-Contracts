@@ -2,25 +2,13 @@
 pragma solidity ^0.7.0;
 
 contract OwnerConstants {
+  uint256 public constant HR48 = 10 minutes; //for testing
   address public owner;
   // daily limit contants
   uint256 public constant MAX_LEVEL = 5;
-  uint256[] public JulDStakeAmounts = [
-    1000 ether,
-    2500 ether,
-    10000 ether,
-    25000 ether,
-    100000 ether
-  ];
-  uint256[] public DailyLimits = [
-    100 ether,
-    250 ether,
-    500 ether,
-    2500 ether,
-    5000 ether,
-    10000 ether
-  ];
-  uint256[] public CashBackPercents = [10, 200, 300, 400, 500, 600];
+  uint256[] public JulDStakeAmounts ;
+  uint256[] public DailyLimits;
+  uint256[] public CashBackPercents;
   // this is validation period after user change his juld balance for this contract, normally is 30 days. we set 10 mnutes for testing.
   uint256 public levelValidationPeriod;
 
@@ -42,14 +30,14 @@ contract OwnerConstants {
   // staking contract address, which is used to receive 20% of monthly fee, so staked users can be rewarded from this contract
   address public stakeContractAddress;
   // statking amount of monthly fee
-  uint256 public stakePercent = 15 * (100 + 15) ; // 15 %
+  uint256 public stakePercent; // 15 %
 
   // withdraw fee and payment fee should not exeed this amount, 1% is coresponding to 100.
   uint256 public constant MAX_FEE_AMOUNT = 500; // 5%
   // buy fee setting.
-  uint256 public buyFeePercent = 100; // 1%
+  uint256 public buyFeePercent; // 1%
   // withdraw fee setting.
-  uint256 public withdrawFeePercent = 10; // 0.1 %
+  uint256 public withdrawFeePercent; // 0.1 %
   // unit is usd amount , so decimal is 18
   mapping(address => uint256) public userDailyLimits;
   // Set whether user can use juld as payment asset. normally it is false.
@@ -59,9 +47,9 @@ contract OwnerConstants {
   // enable or disable for each market
   mapping(address => bool) public _marketEnabled;
   // set monthly fee of user to use card payment, unit is usd amount ( 1e18)
-  uint256 public monthlyFeeAmount = 6.99 ether; // 6.99 USD
+  uint256 public monthlyFeeAmount; // 6.99 USD
   // if user pay monthly fee using juld, then he will pay less amount fro this percent. 0% => 0, 100% => 10000
-  uint256 public juldMonthlyProfit = 1000; // 10%
+  uint256 public juldMonthlyProfit; // 10%
   
   bool public emergencyStop;
   
@@ -77,47 +65,47 @@ contract OwnerConstants {
     address masterAddress,
     address monthlyFeeAddress
   );
-  event BuyFeePercentChanged(
-    address owner,
-    uint256 newPercent,
-    uint256 beforePercent
-  );
-  event WithdrawFeePercentChanged(
-    address owner,
-    uint256 newPercent,
-    uint256 beforePercent
-  );
-  event UserDailyLimitChanged(address userAddr, uint256 usdAmount);
-  event CashBackEnableChanged(
-    address owner,
-    bool newEnabled,
-    bool beforeEnabled
-  );
-  event MarketEnableChanged(
-    address owner,
-    address market,
-    bool bEnable,
-    bool beforeEnabled
-  );
-  event JuldPaymentEnabled(
-    address owner,
-    bool juldPaymentEnable,
-    bool bOldEnable
-  );
-  event MonthlyFeeChanged(
-    address owner,
-    uint256 monthlyFeeAmount,
-    uint256 juldMonthlyProfit
-  );
-  event LevelValidationPeriodChanged(
-    address owner,
-    uint256 levelValidationPeriod,
-    uint256 beforeValue
-  );
-  event StakeContractParamChanged(
-    address stakeContractAddress,
-    uint256 stakePercent
-  );
+  // event BuyFeePercentChanged(
+  //   address owner,
+  //   uint256 newPercent,
+  //   uint256 beforePercent
+  // );
+  // event WithdrawFeePercentChanged(
+  //   address owner,
+  //   uint256 newPercent,
+  //   uint256 beforePercent
+  // );
+  // event UserDailyLimitChanged(address userAddr, uint256 usdAmount);
+  // event CashBackEnableChanged(
+  //   address owner,
+  //   bool newEnabled,
+  //   bool beforeEnabled
+  // );
+  // event MarketEnableChanged(
+  //   address owner,
+  //   address market,
+  //   bool bEnable,
+  //   bool beforeEnabled
+  // );
+  // event JuldPaymentEnabled(
+  //   address owner,
+  //   bool juldPaymentEnable,
+  //   bool bOldEnable
+  // );
+  // event MonthlyFeeChanged(
+  //   address owner,
+  //   uint256 monthlyFeeAmount,
+  //   uint256 juldMonthlyProfit
+  // );
+  // event LevelValidationPeriodChanged(
+  //   address owner,
+  //   uint256 levelValidationPeriod,
+  //   uint256 beforeValue
+  // );
+  // event StakeContractParamChanged(
+  //   address stakeContractAddress,
+  //   uint256 stakePercent
+  // );
   /// modifier functions
   modifier onlyOwner() {
     require(msg.sender == owner, "oo");
@@ -181,7 +169,7 @@ contract OwnerConstants {
 
   // I have to add 48 hours delay in this function
   function setManagerAddresses() public onlyOwner {
-    require(block.timestamp > requestTimeOfManagerAddressUpdate + 48 hours && requestTimeOfManagerAddressUpdate > 0, "need to wait 48hr");
+    require(block.timestamp > requestTimeOfManagerAddressUpdate + HR48 && requestTimeOfManagerAddressUpdate > 0, "need to wait 48hr");
     treasuryAddress = pendingTreasuryAddress;
     financialAddress = pendingFinancialAddress;
     masterAddress = pendingMasterAddress;
@@ -204,9 +192,9 @@ contract OwnerConstants {
   // verified
   function setBuyFeePercent(uint256 newPercent) public onlyOwner {
     require(newPercent <= MAX_FEE_AMOUNT, "buy fee should be less than 5%");
-    uint256 beforePercent = buyFeePercent;
+    // uint256 beforePercent = buyFeePercent;
     buyFeePercent = newPercent;
-    emit BuyFeePercentChanged(owner, newPercent, beforePercent);
+    // emit BuyFeePercentChanged(owner, newPercent, beforePercent);
   }
 
   // verified
@@ -215,9 +203,9 @@ contract OwnerConstants {
       newPercent <= MAX_FEE_AMOUNT,
       "withdraw fee should be less than 5%"
     );
-    uint256 beforePercent = withdrawFeePercent;
+    // uint256 beforePercent = withdrawFeePercent;
     withdrawFeePercent = newPercent;
-    emit WithdrawFeePercentChanged(owner, newPercent, beforePercent);
+    // emit WithdrawFeePercentChanged(owner, newPercent, beforePercent);
   }
 
   // verified
@@ -226,7 +214,7 @@ contract OwnerConstants {
     onlyOwner
   {
     userDailyLimits[userAddr] = usdAmount;
-    emit UserDailyLimitChanged(userAddr, usdAmount);
+    // emit UserDailyLimitChanged(userAddr, usdAmount);
   }
 
   // verified
@@ -255,23 +243,23 @@ contract OwnerConstants {
 
   // verified
   function setCashBackEnable(bool newEnabled) public onlyOwner {
-    bool beforeEnabled = cashBackEnable;
+    // bool beforeEnabled = cashBackEnable;
     cashBackEnable = newEnabled;
-    emit CashBackEnableChanged(owner, newEnabled, beforeEnabled);
+    // emit CashBackEnableChanged(owner, newEnabled, beforeEnabled);
   }
 
   // verified
   function enableMarket(address market, bool bEnable) public onlyOwner {
-    bool beforeEnabled = _marketEnabled[market];
+    // bool beforeEnabled = _marketEnabled[market];
     _marketEnabled[market] = bEnable;
-    emit MarketEnableChanged(owner, market, bEnable, beforeEnabled);
+    // emit MarketEnableChanged(owner, market, bEnable, beforeEnabled);
   }
 
   // verified
   function setJuldAsPayment(bool bEnable) public onlyOwner {
-    bool bOldEnable = juldPaymentEnable;
+    // bool bOldEnable = juldPaymentEnable;
     juldPaymentEnable = bEnable;
-    emit JuldPaymentEnabled(owner, juldPaymentEnable, bOldEnable);
+    // emit JuldPaymentEnabled(owner, juldPaymentEnable, bOldEnable);
   }
 
   // verified
@@ -282,18 +270,18 @@ contract OwnerConstants {
     require(juldProfitPercent <= 10000, "over percent");
     monthlyFeeAmount = usdFeeAmount;
     juldMonthlyProfit = juldProfitPercent;
-    emit MonthlyFeeChanged(owner, monthlyFeeAmount, juldMonthlyProfit);
+    // emit MonthlyFeeChanged(owner, monthlyFeeAmount, juldMonthlyProfit);
   }
 
   // verified
   function setLevelValidationPeriod(uint256 _newValue) public onlyOwner {
-    uint256 beforeValue = levelValidationPeriod;
+    // uint256 beforeValue = levelValidationPeriod;
     levelValidationPeriod = _newValue;
-    emit LevelValidationPeriodChanged(
-      owner,
-      levelValidationPeriod,
-      beforeValue
-    );
+    // emit LevelValidationPeriodChanged(
+    //   owner,
+    //   levelValidationPeriod,
+    //   beforeValue
+    // );
   }
 
   function setStakeContractParams(
@@ -302,7 +290,7 @@ contract OwnerConstants {
   ) public onlyOwner {
     stakeContractAddress = _stakeContractAddress;
     stakePercent = _stakePercent;
-    emit StakeContractParamChanged(stakeContractAddress, stakePercent);
+    // emit StakeContractParamChanged(stakeContractAddress, stakePercent);
   }
 
   function setEmergencyStop(bool _value) public onlyOwner {

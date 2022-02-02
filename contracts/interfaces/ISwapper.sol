@@ -17,4 +17,8 @@ interface ISwapper {
     address[] memory path
   ) external view returns (address);
   
+  function getOptimumPath(
+    address token0,
+    address token1
+  ) external view returns (address[] memory);
 }

@@ -17,3 +17,9 @@ verify contract
     npx hardhat verify --network fantom 0x427a3415489Ed14eAB0452CA887636C607ab3e52 "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83" "0x04068DA6C83AFCFA0e13ba15A6696662335D5B75" "0x5Cc61A78F164885776AA610fb0FE1257df78E59B"
 
 
+* JULD, TOMB, MAI token : price Feed and swapping path are different than other tokens
+
+        JULD -> WFTM -> USDC
+        TOMB -> WFTM -> USDC
+        BOO  -> WFTM -> USDC
+        

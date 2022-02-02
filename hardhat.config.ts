@@ -84,6 +84,10 @@ export default {
       url: `https://rpc.ftm.tools/`,
       accounts: [`0x${process.env.PRIVATE_KEY}`],
     },
+    fantomtestnet: {
+      url: `https://rpc.testnet.fantom.network/`,
+      accounts: [`0x${process.env.PRIVATE_KEY}`],
+    },
   },
   etherscan: {
     // Your API key for Etherscan

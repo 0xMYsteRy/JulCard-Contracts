@@ -1,12 +1,13 @@
 //SPDX-License-Identifier: UNLICENSED
 
 pragma solidity ^0.7.0;
-import "./interfaces/AggregatorV3Interface.sol";
-import "./uniswapv2/interfaces/IUniswapV2Router01.sol";
-import "./interfaces/ERC20Interface.sol";
+import "../interfaces/AggregatorV3Interface.sol";
+import "../uniswapv2/interfaces/IUniswapV2Router01.sol";
+import "../interfaces/ERC20Interface.sol";
 
-contract CustomPriceFeed is AggregatorV3Interface {
+contract CustomPriceFeed2 is AggregatorV3Interface {
   address public immutable USDT;
+  address public immutable WETH;
   address public immutable router;
   address public immutable token;
   uint256 public testAmountsIn;
@@ -33,15 +34,17 @@ contract CustomPriceFeed is AggregatorV3Interface {
   constructor(
     address _token,
     address _usdt,
+    address _weth,
     address _router
   ) {
     token = _token;
     USDT = _usdt;
+    WETH = _weth;
     router = _router;
     testAmountsIn = 1 ether;
     owner = msg.sender;
     _decimals = 8;
-    _description = "custom price feed";
+    _description = "custom price feed 2";
     _version = 1;
   }
   function setDecimals(uint8 _value) public onlyOwner {
@@ -105,9 +108,10 @@ contract CustomPriceFeed is AggregatorV3Interface {
   }
 
   function getPrice() public view returns (int256) {
-    address[] memory path = new address[](2);
+    address[] memory path = new address[](3);
     path[0] = token;
-    path[1] = USDT;
+    path[1] = WETH;
+    path[2] = USDT;
     uint256 amountIn = testAmountsIn;
     uint256[] memory amounts = IUniswapV2Router01(router).getAmountsOut(
       amountIn,
@@ -118,9 +122,9 @@ contract CustomPriceFeed is AggregatorV3Interface {
       ERC20Interface(USDT).decimals();
     int256 price;
     if (_dec >= 0) {
-      price = int256((amounts[1] * uint256(10**uint256(_dec))) / testAmountsIn);
+      price = int256((amounts[2] * uint256(10**uint256(_dec))) / testAmountsIn);
     } else {
-      price = int256(amounts[1] / uint256(10**uint256(-_dec)) / testAmountsIn);
+      price = int256(amounts[2] / uint256(10**uint256(-_dec)) / testAmountsIn);
     }
     return price;
   }

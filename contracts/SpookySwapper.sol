@@ -10,6 +10,11 @@ import "./spookyswap/libraries/UniswapV2Library.sol";
 contract SpookySwapper {
   // factory address for AMM dex, normally we use spookyswap on fantom chain.
   address public factory;
+  address public constant TOMB = 0x6c021Ae822BEa943b2E66552bDe1D2696a53fbB7;
+  address public constant WFTM = 0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83;
+  address public constant USDC = 0x04068DA6C83AFCFA0e13ba15A6696662335D5B75;
+  address public constant JULD = 0xEFF6FcfBc2383857Dd66ddf57effFC00d58b7d9D;
+  address public constant BOO = 0x841FAD6EAe12c286d1Fd18d1d525DFfA75C7EFFE;
 
   constructor(address _factory) {
     factory = _factory;
@@ -53,5 +58,37 @@ contract SpookySwapper {
     address[] memory path
   ) external view returns (address) {
     return UniswapV2Library.pairFor(factory, path[0], path[1]);
+  }
+
+  function getOptimumPath(
+    address token0,
+    address token1
+  ) external view returns (address[] memory path) {
+    if(token0 == TOMB && token1 == USDC) { //TOMB-USDC pair
+      path = new address[](3);
+      path[0] = TOMB;
+      path[1] = WFTM;
+      path[2] = USDC;
+    }
+    else if(token0 == JULD && token1 == USDC) // JULD-USDC pair
+    {
+      path = new address[](3);
+      path[0] = JULD;
+      path[1] = WFTM;
+      path[2] = USDC;
+    }
+    else if(token0 == BOO && token1 == USDC) // JULD-USDC pair
+    {
+      path = new address[](3);
+      path[0] = BOO;
+      path[1] = WFTM;
+      path[2] = USDC;
+    }
+    else
+    {
+      path = new address[](2);
+      path[0] = token0;
+      path[1] = token1;
+    }
   }
 }
