@@ -212,6 +212,7 @@ contract JulCardV2 is OwnerConstants, SignerRole {
     CashBackPercents = [10, 200, 300, 400, 500, 600];
     stakePercent = 15 * (100 + 15);
     buyFeePercent = 100;
+    buyTxFee = 0.7 ether;
     withdrawFeePercent = 10;
     monthlyFeeAmount = 6.99 ether;
     juldMonthlyProfit = 1000;
@@ -720,6 +721,7 @@ contract JulCardV2 is OwnerConstants, SignerRole {
     address userAddr,
     uint256 usdAmount
   ) internal {
+    uint256 beforeAmount = usersBalances[userAddr][market];
     uint256 spendAmount = calculateAmount(
       market,
       userAddr,
@@ -730,7 +732,6 @@ contract JulCardV2 is OwnerConstants, SignerRole {
     );
 
     uint256 currentDate = block.timestamp / 1 days;
-    uint256 beforeAmount = usersBalances[userAddr][market];
     uint256 totalSpendAmount;
 
     if (usersSpendTime[userAddr] != currentDate) {
@@ -764,7 +765,7 @@ contract JulCardV2 is OwnerConstants, SignerRole {
   ) internal returns (uint256 spendAmount) {
     uint256 addFeeUsdAmount;
     if (feeAddress != address(0)) {
-      addFeeUsdAmount = usdAmount + (usdAmount * feePercent) / 10000;
+      addFeeUsdAmount = usdAmount + (usdAmount * feePercent) / 10000 + buyTxFee;
     } else {
       addFeeUsdAmount = usdAmount;
     }
