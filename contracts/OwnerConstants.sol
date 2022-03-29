@@ -36,8 +36,7 @@ contract OwnerConstants {
   uint256 public constant MAX_FEE_AMOUNT = 500; // 5%
   // buy fee setting.
   uint256 public buyFeePercent; // 1%
-  // buy tx fee in usd
-  uint256 public buyTxFee; // 0.7 usd
+
   
   // withdraw fee setting.
   uint256 public withdrawFeePercent; // 0.1 %
@@ -192,14 +191,7 @@ contract OwnerConstants {
     requestTimeOfManagerAddressUpdate = block.timestamp;
   }
 
-  // verified
-  function setBuyFee(uint256 newBuyFeePercent, uint256 newBuyTxFee) public onlyOwner {
-    require(newBuyFeePercent <= MAX_FEE_AMOUNT, "buy fee should be less than 5%");
-    // uint256 beforePercent = buyFeePercent;
-    buyFeePercent = newBuyFeePercent;
-    buyTxFee = newBuyTxFee;
-    // emit BuyFeePercentChanged(owner, newPercent, beforePercent);
-  }
+
 
   // verified
   function setWithdrawFeePercent(uint256 newPercent) public onlyOwner {

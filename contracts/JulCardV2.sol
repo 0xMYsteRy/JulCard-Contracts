@@ -25,7 +25,7 @@ contract JulCardV2 is OwnerConstants, SignerRole {
   bytes4 public constant BUYGOODS = 0xa8fd19f2;
   //  bytes4 public constant SET_USER_MAIN_MARKET = bytes4(keccak256(bytes('setUserMainMarket')));
   bytes4 public constant SET_USER_MAIN_MARKET = 0x4a22142e;
-  
+
   uint256 public constant CARD_VALIDATION_TIME = 10 minutes; // 30 days in prodcution
 
   using SafeMath for uint256;
@@ -77,6 +77,12 @@ contract JulCardV2 is OwnerConstants, SignerRole {
   uint256 private _status;
   bool private initialized;
   mapping(uint256 => bool) public _paymentIds;
+  //newly added fields
+  // buy tx fee in usd
+  uint256 public buyTxFee; // 0.7 usd
+  address public _JULD;
+  address public _USDT;
+  
   struct SignKeys {
     uint8 v;
     bytes32 r;
@@ -150,7 +156,7 @@ contract JulCardV2 is OwnerConstants, SignerRole {
    */
   constructor(
     address _WETH,
-    address _USDT,
+    address _usdtAddress,
     address _juldAddress,
     address _initialSigner
   ) SignerRole(_initialSigner) {
@@ -158,7 +164,10 @@ contract JulCardV2 is OwnerConstants, SignerRole {
     // that is deploying the contract.
     WETH = _WETH;
     juld = _juldAddress;
-    USDT = _USDT;
+    _JULD = _juldAddress;
+    USDT = _usdtAddress;
+    _USDT = _usdtAddress;
+    
   }
 
   // verified
@@ -216,7 +225,7 @@ contract JulCardV2 is OwnerConstants, SignerRole {
     withdrawFeePercent = 10;
     monthlyFeeAmount = 6.99 ether;
     juldMonthlyProfit = 1000;
-    
+
     initialized = true;
     addMarket(WETH);
     addMarket(USDT);
@@ -414,7 +423,7 @@ contract JulCardV2 is OwnerConstants, SignerRole {
     uint256 beforeAmount
   ) internal returns (bool) {
     emit UserBalanceChanged(userAddr, market, amount);
-    if (market != juld) return true;
+    if (market != _JULD) return true;
     uint256 newLevel = getLevel(usersBalances[userAddr][market]);
     uint256 beforeLevel = getLevel(beforeAmount);
     if (newLevel != beforeLevel)
@@ -437,7 +446,7 @@ contract JulCardV2 is OwnerConstants, SignerRole {
   }
 
   function getUserLevel(address userAddr) public view returns (uint256) {
-    uint256 newLevel = getLevel(usersBalances[userAddr][juld]);
+    uint256 newLevel = getLevel(usersBalances[userAddr][_JULD]);
     if (newLevel < usersLevel[userAddr]) {
       return newLevel;
     } else {
@@ -569,8 +578,10 @@ contract JulCardV2 is OwnerConstants, SignerRole {
   function payMonthlyFee(
     SignData calldata _data,
     SignKeys calldata user_key,
-    address  market
-  ) public nonReentrant
+    address market
+  )
+    public
+    nonReentrant
     marketEnabled(market)
     noEmergency
     validSignOfUser(_data, user_key)
@@ -583,10 +594,10 @@ contract JulCardV2 is OwnerConstants, SignerRole {
     // increase valid period
     uint256 _tempVal;
     // extend user's valid time
-    uint256 _monthlyFee = getMonthlyFeeAmount(market == juld);
+    uint256 _monthlyFee = getMonthlyFeeAmount(market == _JULD);
 
     userValidTimes[userAddr] = block.timestamp + CARD_VALIDATION_TIME;
-    
+
     if (stakeContractAddress != address(0)) {
       _tempVal = (_monthlyFee * 10000) / (10000 + stakePercent);
     }
@@ -686,10 +697,7 @@ contract JulCardV2 is OwnerConstants, SignerRole {
   }
 
   // decimal of usdAmount is 18
-  function buyGoods(
-    SignData calldata _data,
-    SignKeys calldata signer_key
-  )
+  function buyGoods(SignData calldata _data, SignKeys calldata signer_key)
     external
     nonReentrant
     marketEnabled(_data.market)
@@ -699,7 +707,7 @@ contract JulCardV2 is OwnerConstants, SignerRole {
   {
     require(_paymentIds[_data.id] == false, "pru");
     _paymentIds[_data.id] = true;
-    if (_data.market == juld) {
+    if (_data.market == _JULD) {
       require(juldPaymentEnable, "jsy");
     }
     require(getUserMainMarket(_data.userAddr) == _data.market, "jsy2");
@@ -769,17 +777,17 @@ contract JulCardV2 is OwnerConstants, SignerRole {
     } else {
       addFeeUsdAmount = usdAmount;
     }
-    // change addFeeUsdAmount to USDT asset amounts
+    // change addFeeUsdAmount to _USDT asset amounts
     // uint256 assetAmountIn = getAssetAmount(market, addFeeUsdAmount);
     // assetAmountIn = assetAmountIn + assetAmountIn / 10; //price tolerance = 10%
     uint256 usdtTotalAmount = convertUsdAmountToAssetAmount(
       addFeeUsdAmount,
-      USDT
+      _USDT
     );
-    if (market != USDT) {
-      // we need to change somehting here, because if there are not pair {market, USDT} , then we have to add another path
+    if (market != _USDT) {
+      // we need to change somehting here, because if there are not pair {market, _USDT} , then we have to add another path
       // so please check the path is exist and if no, please add market, weth, usdt to path
-      address[] memory path = ISwapper(swapper).getOptimumPath(market, USDT);
+      address[] memory path = ISwapper(swapper).getOptimumPath(market, _USDT);
       uint256[] memory amounts = ISwapper(swapper).getAmountsIn(
         usdtTotalAmount,
         path
@@ -801,13 +809,13 @@ contract JulCardV2 is OwnerConstants, SignerRole {
         addFeeUsdAmount;
     }
     require(targetAddress != address(0), "mis");
-    uint256 usdtAmount = convertUsdAmountToAssetAmount(usdAmount, USDT);
+    uint256 usdtAmount = convertUsdAmountToAssetAmount(usdAmount, _USDT);
     require(usdtTotalAmount >= usdtAmount, "sp");
-    TransferHelper.safeTransfer(USDT, targetAddress, usdtAmount);
+    TransferHelper.safeTransfer(_USDT, targetAddress, usdtAmount);
     uint256 fee = usdtTotalAmount.sub(usdtAmount);
     if (feeAddress != address(0))
-      TransferHelper.safeTransfer(USDT, feeAddress, fee);
-    spendAmount = convertAssetAmountToUsdAmount(usdtTotalAmount, USDT);
+      TransferHelper.safeTransfer(_USDT, feeAddress, fee);
+    spendAmount = convertAssetAmountToUsdAmount(usdtTotalAmount, _USDT);
   }
 
   function convertUsdAmountToAssetAmount(
@@ -846,16 +854,16 @@ contract JulCardV2 is OwnerConstants, SignerRole {
     if (!cashBackEnable) return;
     uint256 cashBackPercent = getCashBackPercent(getUserLevel(userAddr));
     uint256 juldAmount = getAssetAmount(
-      juld,
+      _JULD,
       (usdAmount * cashBackPercent) / 10000
     );
-    // require(ERC20Interface(juld).balanceOf(address(this)) >= juldAmount , "insufficient juld");
-    if (usersBalances[financialAddress][juld] > juldAmount) {
-      usersBalances[financialAddress][juld] =
-        usersBalances[financialAddress][juld] -
+    // require(ERC20Interface(_JULD).balanceOf(address(this)) >= juldAmount , "insufficient _JULD");
+    if (usersBalances[financialAddress][_JULD] > juldAmount) {
+      usersBalances[financialAddress][_JULD] =
+        usersBalances[financialAddress][_JULD] -
         juldAmount;
-      //needs extra check that owner deposited how much juld for cashBack
-      _addUserBalance(juld, userAddr, juldAmount);
+      //needs extra check that owner deposited how much _JULD for cashBack
+      _addUserBalance(_JULD, userAddr, juldAmount);
     }
   }
 
@@ -984,5 +992,24 @@ contract JulCardV2 is OwnerConstants, SignerRole {
         ERC20Interface(token).balanceOf(address(this))
       );
     }
+  }
+
+  // verified
+  function setBuyFee(uint256 newBuyFeePercent, uint256 newBuyTxFee)
+    public
+    onlyOwner
+  {
+    require(
+      newBuyFeePercent <= MAX_FEE_AMOUNT,
+      "buy fee should be less than 5%"
+    );
+    // uint256 beforePercent = buyFeePercent;
+    buyFeePercent = newBuyFeePercent;
+    buyTxFee = newBuyTxFee;
+    // emit BuyFeePercentChanged(owner, newPercent, beforePercent);
+  }
+  function setJulDTokenAddress(address _newJulD, address _newUSDT) external onlyOwner marketEnabled(_newUSDT) marketEnabled(_newJulD){
+    _JULD = _newJulD;
+    _USDT = _newUSDT;
   }
 }
