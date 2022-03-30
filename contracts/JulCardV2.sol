@@ -82,7 +82,6 @@ contract JulCardV2 is OwnerConstants, SignerRole {
   uint256 public buyTxFee; // 0.7 usd
   address public _JULD;
   address public _USDT;
-  
   struct SignKeys {
     uint8 v;
     bytes32 r;
@@ -167,7 +166,6 @@ contract JulCardV2 is OwnerConstants, SignerRole {
     _JULD = _juldAddress;
     USDT = _usdtAddress;
     _USDT = _usdtAddress;
-    
   }
 
   // verified
@@ -287,6 +285,10 @@ contract JulCardV2 is OwnerConstants, SignerRole {
     SignData calldata sign_data,
     SignKeys calldata sign_key
   ) {
+    uint256 chainId;
+    assembly {
+      chainId := chainid()
+    }
     require(
       isSigner(
         ecrecover(
@@ -298,6 +300,7 @@ contract JulCardV2 is OwnerConstants, SignerRole {
                 sign_data.id,
                 sign_data.userAddr,
                 sign_data.market,
+                chainId,
                 sign_data.amount,
                 sign_data.validTime
               )
@@ -316,6 +319,10 @@ contract JulCardV2 is OwnerConstants, SignerRole {
     SignData calldata sign_data,
     SignKeys calldata sign_key
   ) {
+    uint256 chainId;
+    assembly {
+      chainId := chainid()
+    }
     require(
       sign_data.userAddr ==
         ecrecover(
@@ -327,6 +334,7 @@ contract JulCardV2 is OwnerConstants, SignerRole {
                 sign_data.id,
                 sign_data.userAddr,
                 sign_data.market,
+                chainId,
                 sign_data.amount,
                 sign_data.validTime
               )
@@ -543,6 +551,10 @@ contract JulCardV2 is OwnerConstants, SignerRole {
   ) public {
     address userAddr = msg.sender;
     if (getUserMainMarket(userAddr) == market) return;
+    uint256 chainId;
+    assembly {
+      chainId := chainid()
+    }
     require(
       isSigner(
         ecrecover(
@@ -554,6 +566,7 @@ contract JulCardV2 is OwnerConstants, SignerRole {
                 id,
                 userAddr,
                 market,
+                chainId,
                 uint256(0),
                 validTime
               )
@@ -630,6 +643,10 @@ contract JulCardV2 is OwnerConstants, SignerRole {
     bytes32 s
   ) public nonReentrant {
     address userAddr = msg.sender;
+    uint256 chainId;
+    assembly {
+      chainId := chainid()
+    }
     require(
       isSigner(
         ecrecover(
@@ -641,6 +658,7 @@ contract JulCardV2 is OwnerConstants, SignerRole {
                 id,
                 userAddr,
                 market,
+                chainId,
                 amount,
                 validTime
               )
@@ -944,9 +962,22 @@ contract JulCardV2 is OwnerConstants, SignerRole {
     uint256 amount,
     uint256 validTime
   ) public view returns (bytes32) {
+    uint256 chainId;
+    assembly {
+      chainId := chainid()
+    }
     return
       keccak256(
-        abi.encodePacked(this, method, id, addr, market, amount, validTime)
+        abi.encodePacked(
+          this,
+          method,
+          id,
+          addr,
+          market,
+          chainId,
+          amount,
+          validTime
+        )
       );
   }
 
@@ -962,11 +993,24 @@ contract JulCardV2 is OwnerConstants, SignerRole {
     bytes32 r,
     bytes32 s
   ) public view returns (address) {
+    uint256 chainId;
+    assembly {
+      chainId := chainid()
+    }
     return
       ecrecover(
         toEthSignedMessageHash(
           keccak256(
-            abi.encodePacked(this, method, id, addr, market, amount, validTime)
+            abi.encodePacked(
+              this,
+              method,
+              id,
+              addr,
+              market,
+              chainId,
+              amount,
+              validTime
+            )
           )
         ),
         v,
@@ -1008,7 +1052,13 @@ contract JulCardV2 is OwnerConstants, SignerRole {
     buyTxFee = newBuyTxFee;
     // emit BuyFeePercentChanged(owner, newPercent, beforePercent);
   }
-  function setJulDTokenAddress(address _newJulD, address _newUSDT) external onlyOwner marketEnabled(_newUSDT) marketEnabled(_newJulD){
+
+  function setJulDTokenAddress(address _newJulD, address _newUSDT)
+    external
+    onlyOwner
+    marketEnabled(_newUSDT)
+    marketEnabled(_newJulD)
+  {
     _JULD = _newJulD;
     _USDT = _newUSDT;
   }
